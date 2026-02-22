@@ -1,4 +1,3 @@
-// Реализация логики покерного противника находящегося в позициях BigBlind/SmallBlind с диапазонным мышлением и элементом рандома в принимаемых решениях
 import Foundation
 
 class PokerOponent{
@@ -48,7 +47,7 @@ class PokerOponent{
 //    func decideActionFlop(board: [Card], hand: [Card], wasAggressor: Bool,opponentBet: Int = 0) -> BotAction {
 //        let madeHand = hasMadeHand(hand: hand, board: board)
 //        let strength = handStrength(hand: hand, board: board)
-//        
+//
 //        if wasAggressor {
 //            // бот рейзил играем прямолинейно
 //            if rollDice(outOf: 10, success: 8) {
@@ -91,7 +90,7 @@ class PokerOponent{
 //                }
 //            }
 //        }
-//        
+//
 //        return .check
 //    }
 //

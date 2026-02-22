@@ -1,19 +1,6 @@
 import Foundation
 
-//Точка входа бота в игру
-//                let botEnters = bot.shouldEnter(withHand: opHand)
-//                    if !botEnters {
-//                        heroStack += bank
-//                        print("Bot fold")
-//                        return false
-//                    }else{
-//                        opStack -= 10
-//                        bank += 10
-//                        return true
-//                    }
-
 class PokerGame{
-    let bot = PokerOponent(position: .BigBlind)
     let smallBlindBet = 5
     let bigBlindBet = 10
     var heroStack: Int
@@ -38,7 +25,6 @@ class PokerGame{
     
     func showPreflopInfo() -> Void{
         print("Your oponent required bet \(Double(bigBlindBet)/Double(bigBlindBet)) BB, your required bet is \(Double(smallBlindBet)/Double(bigBlindBet)) BB")
-        print("You turn: 1. Call 2. Raise 3. Fold ")
     }
     
     //Создание рук
@@ -48,6 +34,42 @@ class PokerGame{
         opHand = [deck[1], deck[3]]
         board = []
         bank = 0
+    }
+    //Проврека ввода
+    func safeInput() -> Int{
+        while true{
+            let choice = Int(readLine() ?? "")
+            if let choice, choice >= 1 && choice <= 3 {
+                return choice
+            }
+            print("Warning: wrong input")
+        }
+    }
+    
+    func safeRaizeInput(raizerStack: inout Int) -> Int{
+        print("Enter how much BB you wanna bet:")
+        while true {
+            let safeRaizeChoice = Double(readLine() ?? "")
+            if let safeRaizeChoice, Int(safeRaizeChoice*10) <= raizerStack && safeRaizeChoice >= 2 {
+                return Int(safeRaizeChoice * 10)
+            }
+            if let safeRaizeChoice, Int(safeRaizeChoice) >= raizerStack{
+                print("You don`t have so much BB, so bet is \(String(format: "%.1f", Double(raizerStack)*0.1))BB")
+                return raizerStack
+            }
+            print("Warning: minimum x2 from opponent bet!")
+        }
+    }
+    
+    func safeRaizeInputBettingRound(raizerStack: inout Int, previousBet: Int) -> Int{
+        print("Enter how much BB you wanna bet:")
+        while true {
+            let safeRaizeChoice = Double(readLine() ?? "")
+            if let safeRaizeChoice, Int(safeRaizeChoice*10) <= raizerStack && Int(safeRaizeChoice*10) >= previousBet*2 {
+                return Int(safeRaizeChoice * 10)
+            }
+            print("Warning: check raize size!")
+        }
     }
     
     //Смена позиции
@@ -60,6 +82,7 @@ class PokerGame{
             opPosition = Position.SmallBlind
         }
     }
+    
     
     //Раздача карт
     func dealCards(){
@@ -104,41 +127,37 @@ class PokerGame{
     func addToBank(amount: Int){
         bank += amount
     }
+    
     func checkAllInSB() -> Bool{
         if heroStack <= smallBlindBet{
-            addToBank(amount: heroStack*2)
-            placeBet(playerStack: &heroStack, amount: heroStack)
-            placeBet(playerStack: &opStack, amount: heroStack)
+            let allInAmount = heroStack
+            addToBank(amount: allInAmount*2)
+            placeBet(playerStack: &heroStack, amount: allInAmount)
+            placeBet(playerStack: &opStack, amount: allInAmount)
             return allInSituation()
         }
         return true
     }
     func checkAllInBB() -> Bool{
         if heroStack <= bigBlindBet{
-            addToBank(amount: heroStack*2)
-            placeBet(playerStack: &heroStack, amount: heroStack)
-            placeBet(playerStack: &opStack, amount: heroStack)
+            let allInAmount = heroStack
+            addToBank(amount: allInAmount*2)
+            placeBet(playerStack: &heroStack, amount: allInAmount)
+            placeBet(playerStack: &opStack, amount: allInAmount)
             return allInSituation()
         }
         return true
     }
     
-    
-    
+
     //Префлоп
     func preflopAction() -> Bool{
         if heroPosition == Position.SmallBlind{
             
             if !checkAllInSB() {return false}
             showPreflopInfo()
-            
-            
-            guard let choice = Int(readLine() ?? ""), choice >= 1 && choice <= 3 else{
-                print("Wrong input -> Fold")
-                placeBet(playerStack: &heroStack, amount: smallBlindBet)
-                addToStack(playerStack: &opStack, amount: smallBlindBet)
-                if heroStack == 0 || opStack == 0 { return allInSituation() }
-                return false }
+            print("You turn: 1. Call 2. Raise 3. Fold ")
+            let choice = safeInput()
             
             switch choice {
             case 1:
@@ -158,16 +177,7 @@ class PokerGame{
                     placeBet(playerStack: &opStack, amount: localBet)
                     return allInSituation()
                 }else{
-                    print("Enter how much BB you wanna bet:")
-                    guard let safeRaizeChoize = Double(readLine() ?? ""), (safeRaizeChoize*10 <= Double(heroStack) && safeRaizeChoize >= 2.0) else{
-                        print("wrong input -> Fold")
-                        placeBet(playerStack: &heroStack, amount: smallBlindBet)
-                        addToStack(playerStack: &opStack, amount: smallBlindBet)
-                        if heroStack == 0 || opStack == 0 { return allInSituation() }
-                        return false
-                    }
-
-                    let raizeChoize = Int(safeRaizeChoize * 10)
+                    let raizeChoize = safeRaizeInput(raizerStack: &heroStack)
                     addToBank(amount: min(raizeChoize, heroStack))
                     placeBet(playerStack: &heroStack, amount: raizeChoize)
                     addToBank(amount: min(raizeChoize, opStack))
@@ -188,14 +198,8 @@ class PokerGame{
             
             if !checkAllInBB() {return false}
             showPreflopInfo()
-            
-            guard let choice = Int(readLine() ?? ""), choice >= 1 && choice <= 3 else{
-                print("Wrong input -> Fold")
-                placeBet(playerStack: &heroStack, amount: bigBlindBet)
-                addToStack(playerStack: &opStack, amount: bigBlindBet)
-                if heroStack == 0 || opStack == 0 { return allInSituation() }
-                return false
-            }
+            print("You turn: 1. Check 2. Raise 3. Fold ")
+            let choice = safeInput()
             
             switch choice {
             case 1:
@@ -215,15 +219,7 @@ class PokerGame{
                     return allInSituation()
 
                 }else{
-                    print("Enter how much BB you wanna bet:")
-                    guard let safeRaizeChoize = Double(readLine() ?? ""), (safeRaizeChoize*10 <= Double(heroStack) && safeRaizeChoize >= 2.0) else{
-                        print("wrong input -> Fold")
-                        placeBet(playerStack: &heroStack, amount: bigBlindBet)
-                        addToStack(playerStack: &opStack, amount: bigBlindBet)
-                        return false
-                    }
-
-                    let raizeChoize = Int(safeRaizeChoize * 10)
+                    let raizeChoize = safeRaizeInput(raizerStack: &heroStack)
                     addToBank(amount: min(raizeChoize, heroStack))
                     placeBet(playerStack: &heroStack, amount: raizeChoize)
                     addToBank(amount: min(raizeChoize, opStack))
@@ -253,12 +249,7 @@ class PokerGame{
         if heroPosition == Position.SmallBlind{
             let opBet = min(Int.random(in: 10...bank), opStack)
             print("Your op bet \(Double(opBet)/10)BB", "You turn: 1. Call 2. Raise 3. Fold")
-            
-            guard let choice = Int(readLine() ?? ""), choice >= 1 && choice <= 3 else{
-                print("Wrong input -> Fold")
-                addToStack(playerStack: &opStack, amount: bank)
-                return false
-            }
+            let choice = safeInput()
             
             switch choice {
             case 1:
@@ -277,18 +268,10 @@ class PokerGame{
                     placeBet(playerStack: &opStack, amount: localBet)
                     return allInSituation()
                 }else{
-                    print("Enter how much BB you wanna bet:")
-                    guard let safeRaizeChoize = Double(readLine() ?? ""), (safeRaizeChoize*10 <= Double(heroStack) && safeRaizeChoize >= 2.0) else{
-                        print("wrong input -> Fold")
-                        addToStack(playerStack: &opStack, amount: bank)
-                        if heroStack == 0 || opStack == 0 { return allInSituation() }
-                        return false
-                    }
-
-                    let raizeChoize = Int(safeRaizeChoize * 10)
-                    addToBank(amount: min(raizeChoize, heroStack))
+                    let raizeChoize = safeRaizeInputBettingRound(raizerStack: &heroStack, previousBet: opBet)
+                    addToBank(amount: raizeChoize)
                     placeBet(playerStack: &heroStack, amount: raizeChoize)
-                    addToBank(amount: min(raizeChoize, opStack))
+                    addToBank(amount: raizeChoize)
                     placeBet(playerStack: &opStack, amount: raizeChoize)
                     if heroStack == 0 || opStack == 0 { return allInSituation() }
                     return true
@@ -302,13 +285,8 @@ class PokerGame{
         }else{
             
         print("You turn: 1. Check 2. Bet 3. Fold")
+        let choice = safeInput()
             
-        guard let choice = Int(readLine() ?? ""), choice >= 1 && choice <= 3 else{
-            print("Wrong input -> Fold")
-            addToStack(playerStack: &opStack, amount: bank)
-            return false
-        }
-        
         switch choice {
         case 1:
             print("You both checked")
@@ -322,15 +300,7 @@ class PokerGame{
                 placeBet(playerStack: &opStack, amount: localBet)
                 return allInSituation()
             }else{
-                print("Enter how much BB you wanna bet:")
-                guard let safeRaizeChoize = Double(readLine() ?? ""), (safeRaizeChoize*10 <= Double(heroStack)) else{
-                    print("wrong input -> Fold")
-                    addToStack(playerStack: &opStack, amount: bank)
-                    if heroStack == 0 || opStack == 0 { return allInSituation() }
-                    return false
-                }
-
-                let raizeChoize = Int(safeRaizeChoize * 10)
+                let raizeChoize = safeRaizeInput(raizerStack: &heroStack)
                 addToBank(amount: min(raizeChoize, heroStack))
                 placeBet(playerStack: &heroStack, amount: raizeChoize)
                 addToBank(amount: min(raizeChoize, opStack))
@@ -370,14 +340,17 @@ class PokerGame{
         if heroBestCombination.isStronger(than: opBestCombination) {
             print("You win")
             print("Oponent have \(opHand), Bank was \(String(format: "%.1f", Double(bank) * 0.1))BB")
+            print("---------------------------------------------------------------")
             addToStack(playerStack: &heroStack, amount: bank)
         } else if opBestCombination.isStronger(than: heroBestCombination) {
             print("You lose")
             print("Oponent have \(opHand), Bank was \(String(format: "%.1f", Double(bank) * 0.1))BB")
+            print("---------------------------------------------------------------")
             addToStack(playerStack: &opStack, amount: bank)
         } else {
             print("Split")
             print("Oponent have \(opHand), Bank was \(String(format: "%.1f", Double(bank) * 0.1))BB")
+            print("---------------------------------------------------------------")
             addToStack(playerStack: &heroStack, amount: bank/2)
             addToStack(playerStack: &opStack, amount: bank/2)
         }

@@ -68,9 +68,31 @@ class PokerCombinations{
         return compareSameType(other)
     }
     
-    private func compareSameType(_ other: PokerCombinations) -> Bool {
-        let selfRanks = cards.map { $0.rank.rawValue }.sorted(by: >)
-        let otherRanks = other.cards.map { $0.rank.rawValue }.sorted(by: >)
+    func rankFrequencies() -> [Int: Int] {
+        var dict: [Int: Int] = [:]
+        for card in cards {
+            dict[card.rank.rawValue, default: 0] += 1
+        }
+        return dict
+    }
+
+    func sortedRanksDescending() -> [Int] {
+        cards.map { $0.rank.rawValue }.sorted(by: >)
+    }
+    
+    func highestStraightCard() -> Int {
+        let ranks = cards.map { $0.rank.rawValue }.sorted()
+        
+        if ranks == [2,3,4,5,14] {
+            return 5
+        }
+        
+        return ranks.last!
+    }
+    
+    func compareHighCards(_ other: PokerCombinations) -> Bool {
+        let selfRanks = sortedRanksDescending()
+        let otherRanks = other.sortedRanksDescending()
         
         for i in 0..<selfRanks.count {
             if selfRanks[i] != otherRanks[i] {
@@ -78,6 +100,68 @@ class PokerCombinations{
             }
         }
         return false
+    }
+    
+    func compareSameType(_ other: PokerCombinations) -> Bool {
+        let selfFreq = self.rankFrequencies()
+        let otherFreq = other.rankFrequencies()
+        let type = self.handType()
+        
+        switch type {
+            
+        case .royalFlush:
+            return false
+            
+        case .straightFlush, .straight:
+            return highestStraightCard() > other.highestStraightCard()
+            
+        case .fourOfAKind:
+            let selfQuad = selfFreq.first { $0.value == 4 }!.key
+            let otherQuad = otherFreq.first { $0.value == 4 }!.key
+            if selfQuad != otherQuad { return selfQuad > otherQuad }
+            
+            let selfKicker = selfFreq.first { $0.value == 1 }!.key
+            let otherKicker = otherFreq.first { $0.value == 1 }!.key
+            return selfKicker > otherKicker
+            
+        case .fullHouse:
+            let selfTrips = selfFreq.first { $0.value == 3 }!.key
+            let otherTrips = otherFreq.first { $0.value == 3 }!.key
+            if selfTrips != otherTrips { return selfTrips > otherTrips }
+            
+            let selfPair = selfFreq.first { $0.value == 2 }!.key
+            let otherPair = otherFreq.first { $0.value == 2 }!.key
+            return selfPair > otherPair
+            
+        case .flush, .highCard:
+            return compareHighCards(other)
+            
+        case .threeOfAKind:
+            let selfTrips = selfFreq.first { $0.value == 3 }!.key
+            let otherTrips = otherFreq.first { $0.value == 3 }!.key
+            if selfTrips != otherTrips { return selfTrips > otherTrips }
+            
+            return compareHighCards(other)
+            
+        case .twoPair:
+            let selfPairs = selfFreq.filter { $0.value == 2 }.map { $0.key }.sorted(by: >)
+            let otherPairs = otherFreq.filter { $0.value == 2 }.map { $0.key }.sorted(by: >)
+            
+            if selfPairs[0] != otherPairs[0] { return selfPairs[0] > otherPairs[0] }
+            if selfPairs[1] != otherPairs[1] { return selfPairs[1] > otherPairs[1] }
+            
+            let selfKicker = selfFreq.first { $0.value == 1 }!.key
+            let otherKicker = otherFreq.first { $0.value == 1 }!.key
+            return selfKicker > otherKicker
+            
+        case .pair:
+            let selfPair = selfFreq.first { $0.value == 2 }!.key
+            let otherPair = otherFreq.first { $0.value == 2 }!.key
+            
+            if selfPair != otherPair { return selfPair > otherPair }
+            
+            return compareHighCards(other)
+        }
     }
     
     enum HandType:Int{
@@ -92,107 +176,111 @@ class PokerCombinations{
         case straightFlush
         case royalFlush
 
-    }
-}
-//создание колоды
-func DeckCreator() -> [Card]{
-    var deck: [Card] = []
-    for suit in Suit.allCases{
-        for rank in Rank.allCases{
-            deck.append(Card(rank: rank, suit: suit))
         }
     }
-    deck.shuffle()
-    return deck
-}
-//сильнейшая комбинация из 7 кард
-func Combinations(cards: [Card]) -> PokerCombinations{
-    if cards.count == 5{
-        return PokerCombinations(cards: cards)
-    }
-    if cards.count == 6{
-        var allHands: [PokerCombinations] = []
-        for i in 0..<cards.count {
-            var fiveCards = cards
-            fiveCards.remove(at: i)
-            allHands.append(PokerCombinations(cards: fiveCards))
-        }
-        
-        var bestHand = allHands[0]
-        for currentHand in allHands {
-            if currentHand.isStronger(than: bestHand) {
-                bestHand = currentHand
+
+//    func TestDeck() -> [Card] {
+//        return [
+//            Card(rank: .three, suit: .spades),
+//            Card(rank: .two, suit: .diamonds),
+//            Card(rank: .three, suit: .spades),
+//            Card(rank: .ace, suit: .diamonds),
+//            Card(rank: .three, suit: .spades),
+//            Card(rank: .three, suit: .spades),
+//            Card(rank: .two, suit: .spades),
+//            Card(rank: .two, suit: .spades),
+//            Card(rank: .two, suit: .diamonds)
+//        ]
+//    }
+    //создание колоды
+    func DeckCreator() -> [Card]{
+        var deck: [Card] = []
+        for suit in Suit.allCases{
+            for rank in Rank.allCases{
+                deck.append(Card(rank: rank, suit: suit))
             }
         }
-        return bestHand
+        deck.shuffle()
+        return deck
     }
-    if cards.count == 7{
-        let hand = Array(cards.prefix(2))
-        let board = Array(cards.suffix(5))
-        var allHands: [PokerCombinations] = []
-        
-        //2 свои + 3 с борда
-        for i in 0..<board.count{
-            for j in (i+1)..<board.count{
-                for k in (j+1)..<board.count{
-                    let newHand = [hand[0], hand[1], board[i], board[j], board[k]]
-                    allHands.append(PokerCombinations(cards: newHand))
+    //сильнейшая комбинация из 7 кард
+    func Combinations(cards: [Card]) -> PokerCombinations{
+        if cards.count == 5{
+            return PokerCombinations(cards: cards)
+        }
+        if cards.count == 6{
+            var allHands: [PokerCombinations] = []
+            for i in 0..<cards.count {
+                var fiveCards = cards
+                fiveCards.remove(at: i)
+                allHands.append(PokerCombinations(cards: fiveCards))
+            }
+            
+            var bestHand = allHands[0]
+            for currentHand in allHands {
+                if currentHand.isStronger(than: bestHand) {
+                    bestHand = currentHand
                 }
             }
+            return bestHand
         }
-        //1 своя и 4 с борда
-        for i in hand{
-            for j in 0..<board.count{
-                var fourBoard = board
-                fourBoard.remove(at: j)
-                let fiveCardHand = [i] + fourBoard
-                allHands.append(PokerCombinations(cards: fiveCardHand))
+        if cards.count == 7{
+            let hand = Array(cards.prefix(2))
+            let board = Array(cards.suffix(5))
+            var allHands: [PokerCombinations] = []
+            
+            //2 свои + 3 с борда
+            for i in 0..<board.count{
+                for j in (i+1)..<board.count{
+                    for k in (j+1)..<board.count{
+                        let newHand = [hand[0], hand[1], board[i], board[j], board[k]]
+                        allHands.append(PokerCombinations(cards: newHand))
+                    }
+                }
             }
+            //1 своя и 4 с борда
+            for i in hand{
+                for j in 0..<board.count{
+                    var fourBoard = board
+                    fourBoard.remove(at: j)
+                    let fiveCardHand = [i] + fourBoard
+                    allHands.append(PokerCombinations(cards: fiveCardHand))
+                }
+            }
+            //все 5 с борда
+            allHands.append(PokerCombinations(cards: board))
+            
+            var bestHand = allHands[0]
+            for currentHand in allHands{
+                if currentHand .isStronger(than: bestHand){
+                    bestHand = currentHand
+                }
+            }
+            return bestHand
         }
-        //все 5 с борда
-        allHands.append(PokerCombinations(cards: board))
+        return PokerCombinations(cards: Array(cards.prefix(5)))
+    }
+
+    extension PokerCombinations.HandType: Comparable {
+        static func < (lhs: PokerCombinations.HandType, rhs: PokerCombinations.HandType) -> Bool {
+            return lhs.rawValue < rhs.rawValue
+        }
         
-        var bestHand = allHands[0]
-        for currentHand in allHands{
-            if currentHand .isStronger(than: bestHand){
-                bestHand = currentHand
+        static func == (lhs: PokerCombinations.HandType, rhs: PokerCombinations.HandType) -> Bool {
+            return lhs.rawValue == rhs.rawValue
+        }
+    }
+    extension Card: CustomStringConvertible {
+        var description: String {
+            let rankSymbol: String
+            switch rank {
+            case .jack: rankSymbol = "J"
+            case .queen: rankSymbol = "Q"
+            case .king: rankSymbol = "K"
+            case .ace: rankSymbol = "A"
+            default: rankSymbol = String(rank.rawValue)
             }
+            return rankSymbol + suit.rawValue
         }
-        return bestHand
     }
-    return PokerCombinations(cards: Array(cards.prefix(5)))
-}
-
-extension PokerCombinations.HandType: Comparable {
-    static func < (lhs: PokerCombinations.HandType, rhs: PokerCombinations.HandType) -> Bool {
-        return lhs.rawValue < rhs.rawValue
-    }
-    
-    static func == (lhs: PokerCombinations.HandType, rhs: PokerCombinations.HandType) -> Bool {
-        return lhs.rawValue == rhs.rawValue
-    }
-}
-extension Card: CustomStringConvertible {
-    var description: String {
-        let rankSymbol: String
-        switch rank {
-        case .jack: rankSymbol = "J"
-        case .queen: rankSymbol = "Q"
-        case .king: rankSymbol = "K"
-        case .ace: rankSymbol = "A"
-        default: rankSymbol = String(rank.rawValue)
-        }
-        return rankSymbol + suit.rawValue
-    }
-}
-
-//    func OnlyGoodRandomCombination() -> Void{
-//    var deck = DeckCreator()
-//    deck.shuffle()
-//    deck = Array(deck.prefix(5))
-//    if PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.highCard && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.pair &&  PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.twoPair && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.threeOfAKind && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.straight && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.flush && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.fullHouse && PokerCombinations(cards: deck).handType() != PokerCombinations.HandType.fourOfAKind{
-//        print(deck)
-//        print(PokerCombinations(cards: deck).handType())
-//    }
-//}
 

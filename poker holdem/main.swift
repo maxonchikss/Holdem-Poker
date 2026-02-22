@@ -1,5 +1,5 @@
 import Foundation
 
-var newGame = PokerGame(BigBlindes: 100)
+var newGame = PokerGame(BigBlindes: 500)
 newGame.startGame()
 
